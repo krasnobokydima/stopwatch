@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { Subscription, timer } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
@@ -7,70 +7,85 @@ import { MatSnackBar } from '@angular/material/snack-bar';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
 })
-export class AppComponent implements OnInit, OnDestroy {
-  currentStopWatch: Date = new Date();
-  currentTimer = 0;
-  date$!: Subscription;
-  isTimerWork = false;
+export class AppComponent implements OnDestroy {
+  // stopWatch
+  hours = 0;
+  minutes = 0;
+  seconds = 0;
+  mlSeconds = 0;
+  timer$: Subscription | undefined;
 
-  timer: any = 0;
-  prevent = false;
+  // delay
+  timerDelay!: ReturnType<typeof setTimeout>;
   delay = 300;
+  prevents = false;
 
   constructor(private toast: MatSnackBar) {}
 
-  ngOnInit(): void {
-    this.currentStopWatch.setHours(0, 0, 0, 0);
-  }
-
-  ngOnDestroy(): void {
-    this.date$.unsubscribe();
-    this.isTimerWork = false;
-  }
+  ngOnDestroy(): void { this.timer$?.unsubscribe() }
 
   start() {
-    this.resetError();
+    if (!this.prevents) return this.error();
+    this.prevents = false;
+    clearInterval(this.timerDelay)
 
-    this.date$ = timer(0, 1000).subscribe(() => {
-      this.currentTimer += 1
-      const newDate = new Date();
-      newDate.setHours(0, 0, this.currentTimer)
-
-      this.currentStopWatch = newDate;
-    });
-
-    this.isTimerWork = true;
+    this.timer$ = timer(0, 10).subscribe(() => this.changeWatchTimer());
   }
 
   stop() {
-    this.resetError();
+    if (!this.prevents) return this.error();
+    this.prevents = false;
+    clearInterval(this.timerDelay)
 
-    this.date$.unsubscribe();
-    this.isTimerWork = false;
+    this.timer$?.unsubscribe();
   }
 
   reset() {
-    this.resetError();
+    if (!this.prevents) return this.error();
+    this.prevents = false;
+    clearInterval(this.timerDelay)
 
-    this.date$.unsubscribe();
-    this.currentStopWatch = new Date();
-    this.currentStopWatch.setHours(0, 0, 0, 0);
-    this.currentTimer = 0;
-    this.isTimerWork = false;
+    this.timer$?.unsubscribe();
+
+    this.mlSeconds = 0;
+    this.seconds = 0;
+    this.minutes = 0;
+    this.hours = 0;
   }
 
-  errorToast() {
-    this.timer = setTimeout(() => {
-      if (!this.prevent) {
-        this.toast.open('Use double Click', '!!!', { duration: 1000 });
-      }
+  error() {
+    this.prevents = true;
 
-      this.prevent = false;
+    this.timerDelay = setTimeout(() => {
+      this.prevents = false;
+
+      this.toast.open('Use double Click', '!!!', { duration: 1000 });
     }, this.delay);
   }
 
-  private resetError() {
-    clearTimeout(this.timer);
-    this.prevent = true;
+  createWatchTimer() {
+    const prNumber = (number: number) => (number > 9 ? number : '0' + number);
+    const { hours, minutes, seconds, mlSeconds } = this;
+
+    return `${prNumber(hours)}:${prNumber(minutes)}:${prNumber(seconds)}:${prNumber(mlSeconds)}`;
+  }
+
+  private changeWatchTimer() {
+    this.mlSeconds += 1;
+
+    if (this.mlSeconds === 100) {
+      this.mlSeconds = 0;
+      this.seconds += 1;
+
+      if (this.seconds === 60) {
+        this.seconds = 0;
+        this.minutes += 1;
+
+        if (this.minutes === 60) {
+          this.minutes = 0;
+          this.hours += 1;
+        }
+      }
+    }
   }
 }
