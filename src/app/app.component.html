@@ -1,14 +1,13 @@
 <div class="container">
   <div class="clock">
     <h2 class="time">
-      {{ createWatchTimer() }}
+      {{ ((timer$$ | async) ? (timer$$ | async) : 0) | date: "mm:ss:SS" }}
     </h2>
   </div>
   <div class="button__container">
-    <button #btnStartStop mat-raised-button>
-      {{ timerWork ? "STOP " : "START" }}
-    </button>
-    <button #btnWait mat-raised-button color="primary" [disabled]="!timerWork">WAIT</button>
-    <button #btnReset mat-raised-button color="primary" [disabled]="!mlSeconds && !seconds && !minutes">RESET</button>
+    <button *ngIf="!(isWatchWork$ | async)" mat-raised-button (click)="onStart()">START</button>
+    <button  *ngIf="isWatchWork$ | async"  mat-raised-button (click)="onStop()">STOP</button>
+    <button [disabled]="!(timer$$ | async)" mat-raised-button color="primary" (click)="onWait()">WAIT</button>
+    <button [disabled]="!(timer$$ | async)" mat-raised-button color="primary" (click)="onReset()">RESET</button>
   </div>
 </div>

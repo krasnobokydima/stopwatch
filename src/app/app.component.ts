@@ -1,140 +1,70 @@
+import { Component, OnInit } from '@angular/core';
 import {
-  AfterViewInit,
-  Component,
-  ElementRef,
-  OnDestroy,
-  ViewChild,
-} from '@angular/core';
-import {
-  fromEvent,
-  map,
-  scan,
-  merge,
+  BehaviorSubject,
   switchMap,
-  interval,
-  tap,
-  debounceTime,
-  skip,
+  map,
+  concat,
+  Observable,
+  EMPTY,
+  scan,
+  of,
+  combineLatest,
+  timer,
+  delay,
+  buffer,
+  filter,
+  Subject,
 } from 'rxjs';
-interface State {
-  count: number;
-  timerWork: boolean;
-}
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
 })
-export class AppComponent implements AfterViewInit, OnDestroy {
-  @ViewChild('btnStartStop', { static: true, read: ElementRef })
-  buttonStartStop!: ElementRef;
-  @ViewChild('btnWait', { static: true, read: ElementRef })
-  buttonWait!: ElementRef;
-  @ViewChild('btnReset', { static: true, read: ElementRef })
-  buttonReset!: ElementRef;
-  timerWork = false;
+export class AppComponent implements OnInit {
+  timer$$!: Observable<number>;
+  isWatchWork$ = new BehaviorSubject<boolean>(false);
+  resetWatch$ = new BehaviorSubject<boolean>(false);
+  delay$ = new Subject<void>();
 
-  hours = 0;
-  minutes = 0;
-  seconds = 0;
-  mlSeconds = 0;
+  interval$ = timer(0, 10).pipe(map(() => 1));
 
-  btnStartStopSubs$: any;
-  btnWaitSubs$: any;
-  btnResetSubs$: any;
-  watch$: any;
-
-  startWatch: State = {
-    count: 0,
-    timerWork: true,
-  };
-
-  ngAfterViewInit(): void {
-    this.watch$ = merge(
-      fromEvent(
-        this.buttonStartStop.nativeElement as HTMLElement,
-        'click'
-      ).pipe(
-        map(() => {
-          this.timerWork = !this.timerWork;
-
-          return this.timerWork
-            ? { timerWork: true }
-            : { timerWork: false, count: 0 };
-        })
+  ngOnInit() {
+    this.timer$$ = combineLatest([this.isWatchWork$, this.resetWatch$]).pipe(
+      switchMap(([watchWork, reset]) =>
+        watchWork && !reset
+          ? this.interval$
+          : watchWork && reset
+          ? concat(of(-1), this.interval$)
+          : !watchWork && !reset
+          ? EMPTY
+          : of(-1)
       ),
-      fromEvent(this.buttonWait.nativeElement as HTMLElement, 'click').pipe(
-        debounceTime(500),
-        skip(1),
-        map(() => {
-          this.timerWork = false;
-          return { timerWork: false };
-        })
-      ),
-      fromEvent(this.buttonReset.nativeElement as HTMLElement, 'click').pipe(
-        map(() => ({})),
-        tap(() => this.reset())
-      )
-    )
-      .pipe(
-        scan(
-          (state: State, curr: Partial<State>) => ({ ...state, ...curr }),
-          this.startWatch
-        ),
-        switchMap((state: State) => {
-          return interval(10).pipe(
-            tap(() => {
-              if (state.timerWork) {
-                state.count += 1;
-                this.changeWatchTimer();
-              }
+      scan((acc, curr) => (curr > 0 ? acc + curr : 0), 0),
+      map((x) => x * 10)
+    );
 
-              if (!state.count && !state.timerWork) {
-                this.reset();
-              }
-            })
-          );
-        })
-      )
-      .subscribe();
+    this.delay$.pipe(
+      buffer(this.delay$.pipe(delay(300))),
+      filter((clickArray) => clickArray.length === 2),
+    ).subscribe(() => {
+      this.resetWatch$.next(false);
+      this.isWatchWork$.next(false);
+    });
   }
 
-  ngOnDestroy(): void {
-    this.btnStartStopSubs$.unsubscribe();
-    this.btnWaitSubs$.unsubscribe();
-    this.btnResetSubs$.unsubscribe();
-    this.watch$.unsubscribe();
+  onStart() {
+    this.isWatchWork$.next(true);
+    this.resetWatch$.next(false);
   }
-
-  private changeWatchTimer() {
-    this.mlSeconds += 1;
-    if (this.mlSeconds < 100) return;
-    this.mlSeconds = 0;
-    this.seconds += 1;
-    if (this.seconds < 60) return;
-    this.seconds = 0;
-    this.minutes += 1;
-    if (this.minutes < 60) return;
-    this.minutes = 0;
-    this.hours += 1;
+  onStop() {
+    this.isWatchWork$.next(false);
+    this.resetWatch$.next(true);
   }
-
-  createWatchTimer() {
-    const { mlSeconds, seconds, minutes, hours, prepareTime } = this;
-
-    return `${prepareTime(hours)}:${prepareTime(minutes)}:${prepareTime(
-      seconds
-    )}:${prepareTime(mlSeconds)}`;
+  onWait() {
+    this.delay$.next();
   }
-
-  prepareTime(count: number) {
-    return count < 10 ? '0' + count : '' + count;
-  }
-
-  private reset() {
-    this.mlSeconds = 0;
-    this.seconds = 0;
-    this.minutes = 0;
-    this.hours = 0;
+  onReset() {
+    this.resetWatch$.next(true);
   }
 }
