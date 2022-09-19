@@ -1,0 +1,27 @@
+.container {
+  width: 100%;
+  max-width: 500px;
+  margin: 50px auto;
+}
+
+.clock {
+  width: 100%;
+  height: min-content;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: purple;
+}
+
+.time {
+  display: block;
+  font-size: 10vh;
+  margin: 10vh;
+  color: white;
+}
+
+.button__container {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+}
